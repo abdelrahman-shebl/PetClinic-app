@@ -1,0 +1,7 @@
+resources:
+  - config-maps/
+  - Deployments/
+  - ingress/
+  - pvc/
+  - secrets/
+  - services/

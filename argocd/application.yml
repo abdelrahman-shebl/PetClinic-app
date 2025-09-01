@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pet-clinic
+spec:
+  destination:
+    namespace: petclinic
+    server: https://kubernetes.default.svc
+  source:
+    path: K8s
+    repoURL: https://github.com/abdelrahman-shebl/PetClinic-app
+    targetRevision: HEAD
+  sources: []
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      enabled: true
+    syncOptions:
+      - CreateNamespace=true
