@@ -1,0 +1,101 @@
+services:
+  
+  cadvisor:
+      image: google/cadvisor:latest
+      container_name: cadvisor
+      ports:
+        - "8085:8080"
+      volumes:
+        - /:/rootfs:ro
+        - /var/run:/var/run:ro
+        - /proc:/host/proc
+        - /sys:/sys:ro
+        - /var/lib/docker/:/var/lib/docker:ro
+        - /dev/disk:/dev/disk:ro
+      privileged: true 
+      networks:
+        - monitoring
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.sysfs=/host/sys'
+      - '--path.procfs=/host/proc'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+      - '--no-collector.ipvs'
+    volumes:
+      - /:/rootfs:ro
+      - /proc:/host/proc
+      - /sys:/host/sys
+    networks:
+      - monitoring
+    restart: unless-stopped
+
+  mysql-exporter:
+    image: prom/mysqld-exporter:latest
+    container_name: mysql-exporter
+    command:
+      - --mysqld.username=petclinic
+      - --mysqld.address=mysql-db:3306
+    environment:
+      - MYSQLD_EXPORTER_PASSWORD=petclinic
+    ports:
+      - "9104:9104"
+
+    networks:
+      - monitoring
+      - net 
+
+
+  postgres-exporter:
+    image: wrouesnel/postgres_exporter
+    container_name: postgres-exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://petclinic:petclinic@pg-db:5432/petclinic?sslmode=disable
+    ports:
+      - "9187:9187"
+    networks:
+      - monitoring
+      - net 
+
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - node-exporter
+      - cadvisor
+      - mysql-exporter
+    networks:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:11.5-ubuntu
+    container_name: grafana
+    environment:
+    - GF_SERVER_ROOT_URL=http://localhost/monitoring/
+    - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - monitoring
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  monitoring:
+  net:
+    external: true
+    name: dockercomposemultifile_net 

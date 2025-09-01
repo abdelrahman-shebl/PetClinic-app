@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deploy
+spec:
+  selector:
+    matchLabels:
+      tier: app 
+  template:
+    metadata:
+      labels:
+        tier: app 
+    spec:
+      containers:
+        - name: pet-clinic
+          image: petclinic
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: app-cred
+          ports:
+            - containerPort: 5000
+              

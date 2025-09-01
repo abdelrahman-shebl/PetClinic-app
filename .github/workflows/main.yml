@@ -1,0 +1,16 @@
+name: Petclinic pipelines
+on: 
+    workflow_dispatch: 
+    push: 
+      branches: 
+        - main
+        - 'feature/*'
+jobs:
+  Docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v5
+    
+      - name: 
+          
