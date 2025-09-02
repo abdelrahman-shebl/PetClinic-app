@@ -1,9 +1,3 @@
 resources:
-  - config-maps/app-cm.yml
   - Deployments/app-deplotment.yml
-  - Deployments/db-deployment.yml
-  - ingress/ingress.yml
-  - pvc/pvc.yml
-  - secrets/db-secrests.yml
   - services/app-svc.yml
-  - services/db-svc.yml

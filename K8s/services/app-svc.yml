@@ -1,10 +1,12 @@
-apiVersion: v1 
+apiVersion: v1
 kind: Service
 metadata:
-  name: app-svc
+  name: hello-svc
 spec:
   selector:
-    tier: app 
-  type: ClusterIP
+    app: hello
   ports:
-    - port: 5000
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: NodePort   

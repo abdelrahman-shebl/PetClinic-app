@@ -1,23 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: app-deploy
+  name: hello-deploy
+  labels:
+    app: hello
 spec:
+  replicas: 1
   selector:
     matchLabels:
-      tier: app 
+      app: hello
   template:
     metadata:
       labels:
-        tier: app 
+        app: hello
     spec:
       containers:
-        - name: pet-clinic
+        - name: hello-container
           image: {IMAGE}
-          imagePullPolicy: Never
-          envFrom:
-            - configMapRef:
-                name: app-cred
           ports:
-            - containerPort: 5000
+            - containerPort: 80
               

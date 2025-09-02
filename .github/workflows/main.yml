@@ -1,10 +1,9 @@
 name: Petclinic pipelines
 on: 
     workflow_dispatch: 
-    # push: 
-    #   branches: 
-    #     - main
-    #     - 'feature/*'
+    push: 
+      branches: 
+        - 'feature/*'
 jobs:
     Docker-build-push:
         runs-on: ubuntu-latest
@@ -32,14 +31,6 @@ jobs:
               with:
                 repository: abdelrahman-shebl/PetClinic-app
                 token: ${{ secrets.GH_PAT}}
-            
-            # - name: Kubectl tool installer
-            #   uses: Azure/setup-kubectl@v4.0.1
-                                                          # Have you heared about  Marketplace :) 
-            # - name: configure Kubeconfig
-            #   run: |
-            #     mkdir -p $HOME/.kube
-            #     echo "${{ secrets.KUBECONFIG_DATA }}" > $HOME/.kube/config
 
             - name: Update K8s Manifests
               uses: cschleiden/replace-tokens@v1
