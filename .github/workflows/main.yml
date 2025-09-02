@@ -1,6 +1,6 @@
 name: Petclinic pipelines
 on: 
-    workflow_dispatch: 
+    workflow_dispatch:  
     push: 
       branches: 
         - 'feature/*'
@@ -47,7 +47,4 @@ jobs:
             - name: push to the remote repository
               uses: stefanzweifel/git-auto-commit-action@v6
               with:
-
                 commit_message: "Update image to ${{ github.sha }}"
-              env:
-                GITHUB_TOKEN: ${{ secrets.GH_PAT }}
