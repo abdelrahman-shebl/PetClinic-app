@@ -26,12 +26,12 @@ jobs:
           uses: docker/build-push-action@v6
           with:
             push: true
-            tags: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{github.sha}} 
+            tags: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{ github.run_id }} 
 
 
         - name: Set image tag global
           id: tag
-          run: echo "image_tag=${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{github.sha}}"  >> $GITHUB_OUTPUT
+          run: echo "image_tag=${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{ github.run_id }}"  >> $GITHUB_OUTPUT
     Deploy:
         runs-on: ubuntu-latest
         needs: Docker-build-push
