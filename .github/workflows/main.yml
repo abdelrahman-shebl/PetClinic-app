@@ -41,7 +41,10 @@ jobs:
               env:
                 IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{github.sha}} 
 
-            - uses: stefanzweifel/git-auto-commit-action@v6
+            - name: push to the remote repository
+              uses: stefanzweifel/git-auto-commit-action@v6
               with:
 
                 commit_message: "Update image to ${{ github.sha }}"
+              env:
+                GITHUB_TOKEN: ${{ secrets.GH_PAT }}
