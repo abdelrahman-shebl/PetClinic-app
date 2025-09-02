@@ -1,14 +1,18 @@
 name: Petclinic pipelines
 on: 
-    workflow_dispatch:  
+    workflow_dispatch: 
     push: 
       branches: 
+        - main
         - 'feature/*'
+
 permissions:
-      contents: write 
+  contents: write 
 jobs:
     Docker-build-push:
         runs-on: ubuntu-latest
+        outputs:
+          image_tag: ${{ steps.tag.outputs.image_tag }}
         steps:
         - name: checkout code
           uses: actions/checkout@v5
@@ -24,8 +28,11 @@ jobs:
             push: true
             tags: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{github.sha}} 
 
+
+        - name: Set image tag global
+          id: tag
+          run: echo "image_tag=${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{github.sha}}"  >> $GITHUB_OUTPUT
     Deploy:
-    
         runs-on: ubuntu-latest
         needs: Docker-build-push
         steps:
@@ -34,7 +41,7 @@ jobs:
               with:
                 repository: abdelrahman-shebl/PetClinic-app
                 token: ${{ secrets.GH_PAT}}
-
+            
             - name: Update K8s Manifests
               uses: cschleiden/replace-tokens@v1
               with:
@@ -42,9 +49,9 @@ jobs:
                 tokenSuffix: '}'
                 files: '["K8s/Deployments/app-deplotment.yml"]'
               env:
-                IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{github.sha}} 
+                IMAGE: ${{ needs.Docker-build-push.outputs.image_tag }}
 
-            - name: push to the remote repository
-              uses: stefanzweifel/git-auto-commit-action@v6
+            - uses: stefanzweifel/git-auto-commit-action@v6
               with:
-                commit_message: "Update image to ${{ github.sha }}"
+
+                commit_message: "Update image to ${{ needs.Docker-build-push.outputs.image_tag }}"
