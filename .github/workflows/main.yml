@@ -10,7 +10,7 @@ permissions:
   contents: write 
 jobs:
     Docker-build-push:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-latest 
         outputs:
           image_tag: ${{ steps.tag.outputs.image_tag }}
         steps:
