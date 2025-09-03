@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: hello-container
-          image: {IMAGE}
+          image: shebl22/petclinic:f7016067509be359186a815b024be7c0cfa60b08
           ports:
             - containerPort: 80
               
