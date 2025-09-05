@@ -33,7 +33,9 @@ jobs:
           uses: actions/upload-artifact@v4
           with:
             name: JUnit Tests
-            path: target/surefire-reports/*.xml
+            path: |
+              pet-clinic/target/surefire-reports/*.xml
+              pet-clinic/target/failsafe-reports/*.xml
 
 
     Docker-build-push:
