@@ -5,6 +5,6 @@ metadata:
 spec:
   selector:
     tier: app 
-  type: ClusterIP
+  type: NodePort
   ports:
     - port: 5000

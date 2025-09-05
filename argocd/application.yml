@@ -8,7 +8,7 @@ spec:
     server: https://kubernetes.default.svc
   source:
     path: K8s
-    repoURL: https://github.com/abdelrahman-shebl/PetClinic-app
+    repoURL: hhttps://github.com/abdelrahman-shebl/PetClinic-app.git
     targetRevision: HEAD
   sources: []
   project: default
