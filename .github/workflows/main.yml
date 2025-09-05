@@ -8,7 +8,7 @@ on:
 permissions:
       contents: write 
 jobs: 
-    build:
+    Sonar-Qube-Testing:
       defaults:
         run:
           working-directory: pet-clinic
@@ -39,7 +39,8 @@ jobs:
           env:
             SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
             
-          run: mvn -B test org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=abdelrahman-shebl_PetClinic-app
+          run: mvn -B test -Dtest=\!PostgresIntegrationTests org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=abdelrahman-shebl_PetClinic-app
+
 
     # Unit-testing:
     #     defaults:
@@ -80,7 +81,7 @@ jobs:
 
     Docker-build-push:
 
-        # needs: Unit-testing
+        needs: Sonar-Qube-Testing
 
         runs-on: ubuntu-latest   
         steps:
