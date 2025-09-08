@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: hello-deploy
   labels:
-    app: hello
+    app: hello-test
 spec:
   replicas: 1
   selector:
