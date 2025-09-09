@@ -14,13 +14,8 @@ This project demonstrates enterprise-grade DevOps automation with:
 
 ## 🏗️ Overall Architecture
 
-<!-- INSERT YOUR OVERALL ARCHITECTURE DIAGRAM HERE -->
-*Overall system architecture showing CI/CD flow, infrastructure components, and data flow*
+![CI/CD Pipeline](./Images/CI-CD.gif)
 
-## ☸️ Kubernetes Architecture
-
-<!-- INSERT YOUR KUBERNETES ARCHITECTURE DIAGRAM HERE -->
-*Kubernetes cluster architecture with deployments, services, ingress, and storage components*
 
 ## 🚀 CI/CD Pipeline Flow
 
@@ -70,15 +65,17 @@ This project demonstrates enterprise-grade DevOps automation with:
 <details>
 <summary><strong>🔄 ArgoCD GitOps Dashboard</strong></summary>
 
-<!-- INSERT ARGOCD SCREENSHOT HERE -->
-*ArgoCD application dashboard showing sync status, health, and deployment details*
+![ARGOCD](./Images/ArgoCD.png)
+
+*ArgoCD dashboard showing application synchronization status and GitOps workflow management*
 
 </details>
 
 <details>
 <summary><strong>📊 Grafana Monitoring Dashboard</strong></summary>
 
-<!-- INSERT GRAFANA SCREENSHOT HERE -->
+![GRAFANA](./Images/Grafana.png)
+
 *Grafana dashboard with ArgoCD metrics, application performance, and system monitoring*
 
 </details>
@@ -86,7 +83,8 @@ This project demonstrates enterprise-grade DevOps automation with:
 <details>
 <summary><strong>📧 Gmail Alert Notifications</strong></summary>
 
-<!-- INSERT GMAIL ALERT SCREENSHOT HERE -->
+![GMAIL](./Images/Gmail.png)
+
 *Email alerts showing application sync status changes and deployment notifications*
 
 </details>
@@ -94,7 +92,8 @@ This project demonstrates enterprise-grade DevOps automation with:
 <details>
 <summary><strong>📱 Slack Alert Integration</strong></summary>
 
-<!-- INSERT SLACK ALERT SCREENSHOT HERE -->
+![SLACK](./Images/Slack.png)
+
 *Slack channel notifications for real-time deployment and monitoring alerts*
 
 </details>
@@ -102,7 +101,8 @@ This project demonstrates enterprise-grade DevOps automation with:
 <details>
 <summary><strong>🔧 CI/CD Pipeline Execution</strong></summary>
 
-<!-- INSERT PIPELINE SCREENSHOT HERE -->
+![PIPELINE](./Images/Pipeline.png)
+
 *GitHub Actions pipeline showing all stages: testing, building, scanning, and deployment*
 
 </details>
