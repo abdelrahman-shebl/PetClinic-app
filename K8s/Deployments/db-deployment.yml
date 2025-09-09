@@ -14,7 +14,7 @@ spec:
       containers:
         - name: my
           image: mysql:9.2
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - mountPath: /var/lib/mysql
               name: data

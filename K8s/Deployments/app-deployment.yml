@@ -14,7 +14,7 @@ spec:
       containers:
         - name: pet-clinic
           image: {IMAGE}
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
                 name: app-cred
