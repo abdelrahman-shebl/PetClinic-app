@@ -1,0 +1,36 @@
+
+applications:
+   
+  pet-clinic-real-app:
+    namespace: argocd
+    project: default
+    source:
+      path: K8s
+      repoURL: https://github.com/abdelrahman-shebl/PetClinic-app
+      targetRevision: HEAD
+    destination:
+      namespace: petclinic
+      server: https://kubernetes.default.svc
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+
+   # test:
+    #   namespace: argocd
+    #   project: "default"
+    #   source:
+    #     repoURL: "https://github.com/abdelrahman-shebl/PetClinic-app.git"
+    #     path: "K8s"
+    #     targetRevision: "feature/testing"
+    #   destination:
+    #     server: "https://kubernetes.default.svc"
+    #     namespace: "test"
+    #   syncPolicy:
+    #     # automated:
+    #     #   prune: true
+    #     #   selfHeal: true
+    #     syncOptions:
+    #       - CreateNamespace=true

@@ -1,0 +1,143 @@
+configs:
+  secret:
+    argocdServerAdminPassword: "$2a$10$MVBkBkAxErFWaBpXA4Ltz.Kiwhcz0CkNmVZZgZPa/03JpykN50BVO"
+
+server:
+  replicas: 1
+  service:
+    type: NodePort
+    nodePortHttp: 32080
+    nodePortHttps: 32443
+  metrics:
+    enabled: true
+    service:
+      portName: metrics
+      port: 8083
+      targetPort: 8083
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+repoServer:
+  replicas: 1
+  metrics:
+    enabled: true
+    service:
+      portName: metrics
+      port: 8084
+      targetPort: 8084
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+controller:
+  replicas: 1
+  metrics:
+    enabled: true
+    service:
+      portName: metrics
+      port: 8082
+      targetPort: 8082
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 256Mi
+
+dex:
+  enabled: false 
+
+
+extraObjects:
+  - apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      name: argocd-application-controller-metrics
+      namespace: monitoring
+      labels:
+        app.kubernetes.io/name: argocd
+        app.kubernetes.io/component: application-controller
+        release: my-kube-prometheus-stack
+    spec:
+      namespaceSelector:
+        matchNames:
+          - argocd
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: argocd-metrics  
+      endpoints:
+        - port: metrics
+          interval: 30s
+          path: /metrics
+
+  - apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      name: argocd-server-metrics
+      namespace: monitoring
+      labels:
+        app.kubernetes.io/name: argocd
+        app.kubernetes.io/component: server
+        release: my-kube-prometheus-stack
+    spec:
+      namespaceSelector:
+        matchNames:
+          - argocd
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: argocd-server-metrics 
+      endpoints:
+        - port: metrics
+          interval: 30s
+          path: /metrics
+
+  - apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      name: argocd-repo-server-metrics
+      namespace: monitoring
+      labels:
+        app.kubernetes.io/name: argocd
+        app.kubernetes.io/component: repo-server
+        release: my-kube-prometheus-stack
+    spec:
+      namespaceSelector:
+        matchNames:
+          - argocd
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: argocd-repo-server-metrics  
+      endpoints:
+        - port: metrics
+          interval: 30s
+          path: /metrics
+
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: allow-controller-to-repo
+      namespace: argocd
+    spec:
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: argocd-repo-server
+      ingress:
+      - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: argocd-application-controller
+        ports:
+        - protocol: TCP
+          port: 8081
+      policyTypes:
+      - Ingress

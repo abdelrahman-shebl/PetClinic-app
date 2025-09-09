@@ -1,0 +1,198 @@
+prometheus:
+  prometheusSpec:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 800m
+        memory: 1Gi
+    retention: 12h
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector:
+      matchNames:
+        - monitoring
+        - argocd
+    ruleSelector: {}
+    evaluationInterval: 5s
+    additionalScrapeConfigs:
+      - job_name: 'argocd'
+        scrape_interval: 10s
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['argocd-application-controller-metrics.argocd.svc:8082']
+
+additionalPrometheusRulesMap:
+  argocd-rules:
+    groups:
+      - name: argocd.rules
+        rules:
+          - alert: ArgoCDAppSynced
+            expr: argocd_app_info{sync_status="Synced", namespace="argocd", instance="argocd-application-controller-metrics.argocd.svc:8082"} > 0
+            labels:
+              severity: info
+              app: argocd
+            annotations:
+              summary: "ArgoCD app {{ $labels.name }} is {{ $labels.sync_status }}"
+              description: "App {{ $labels.name }} is in sync_status={{ $labels.sync_status }} with repo {{ $labels.repo }}"
+          - alert: ArgoCDAppOutOfSync
+            expr: argocd_app_info{sync_status="OutOfSync", namespace="argocd", instance="argocd-application-controller-metrics.argocd.svc:8082"} > 0
+            labels:
+              severity: warning
+              app: argocd
+            annotations:
+              summary: "ArgoCD app {{ $labels.name }} is {{ $labels.sync_status }}"
+              description: "App {{ $labels.name }} is in sync_status={{ $labels.sync_status }} with repo {{ $labels.repo }}"
+
+
+grafana:
+  service:
+    type: NodePort
+    nodePort: 32000
+
+  adminUser: admin
+  adminPassword: "admin"
+
+  persistence:
+    enabled: true
+    type: pvc
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+
+  dashboards:
+    default:
+      argocd-dashboard:
+        gnetId: 14584
+        revision: 1
+        datasource: Prometheus
+
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    secrets:
+      - gmail-smtp-secret
+      - slack-webhook-secret
+    replicas: 1
+    logLevel: debug
+    portName: http
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  config:
+    global:
+      resolve_timeout: 5m
+      smtp_smarthost: 'smtp.gmail.com:587'
+      smtp_from: 'sheblabdo00@gmail.com'
+      smtp_auth_username: 'sheblabdo00@gmail.com'
+      smtp_auth_password_file: /etc/alertmanager/secrets/gmail-smtp-secret/smtp_auth_password
+      smtp_require_tls: true
+    inhibit_rules:
+      - source_matchers:
+          - alertname="ArgoCDAppOutOfSync"
+        target_matchers:
+          - alertname="ArgoCDAppSynced"
+        equal: ['name']
+    route:
+      group_by: ['alertname', 'name']
+      group_wait: 5s
+      group_interval: 5s
+      receiver: all-notifications
+      routes:
+        - matchers:
+            - alertname="Watchdog"
+          receiver: "null"
+        - matchers:
+            - alertname="TargetDown"
+          receiver: "null"
+        - matchers:
+            - alertname="KubeSchedulerDown"
+          receiver: "null"
+        - matchers:
+            - alertname="KubeControllerManagerDown"
+          receiver: "null"
+        - matchers:
+            - alertname=~"etcd.*"
+          receiver: "null"
+        - matchers:
+            - alertname="NodeClockNotSynchronising"
+          receiver: "null"
+        - matchers:
+            - alertname="InfoInhibitor"
+          receiver: "null"
+        - matchers:
+            - alertname="NodeMemoryMajorPagesFaults"
+          receiver: "null"
+        - matchers:
+            - alertname="ArgoCDAppSynced"
+          repeat_interval: 5m
+          continue: true
+    receivers:
+      - name: all-notifications
+        email_configs:
+          - to: 'sheblabdo00@gmail.com'
+            send_resolved: true
+            headers:
+              Subject: |
+                [{{ .Status | toUpper }}] {{ range .Alerts -}}
+                {{- if eq .Status "resolved" -}}
+                ArgoCD app {{ .Labels.name }} is now Synced
+                {{- else -}}
+                {{ .Labels.alertname }} ({{ .Labels.name }}) — {{ .Annotations.summary }}
+                {{- end -}}
+                {{ end }}
+            html: |
+              <h3>ArgoCD / App Alert</h3>
+              {{ range .Alerts }}
+              <p><b>Status:</b> {{ .Status | toUpper }}</p>
+              <p><b>App:</b> {{ .Labels.name }}</p>
+              <p><b>Sync Status:</b> 
+                {{- if eq .Status "resolved" -}}
+                Synced
+                {{- else -}}
+                {{ .Labels.sync_status }}
+                {{- end -}}
+              </p>
+              <p><b>Repo URL:</b> <a href="{{ .Labels.repo }}">{{ .Labels.repo }}</a></p>
+              <p><b>Summary:</b> 
+                {{- if eq .Status "resolved" -}}
+                ArgoCD app {{ .Labels.name }} is now Synced
+                {{- else -}}
+                {{ .Annotations.summary }}
+                {{- end -}}
+              </p>
+              <p><b>Started:</b> {{ .StartsAt }}</p>
+              {{ end }}
+        slack_configs:
+          - api_url_file: /etc/alertmanager/secrets/slack-webhook-secret/slack_api_url
+            channel: '#argocd-notifications'
+            send_resolved: true
+            text: |
+              🚨 [{{ .Status | toUpper }}] ({{ len .Alerts }}) alerts
+              {{ range .Alerts -}}
+              {{- if eq .Status "resolved" -}}
+              • {{ .Labels.alertname }} ({{ .Labels.severity }}) — ArgoCD app {{ .Labels.name }} is now Synced
+              {{- else -}}
+              • {{ .Labels.alertname }} ({{ .Labels.severity }}) — {{ .Annotations.summary }}
+              {{- end -}}
+              {{ end }}
+      - name: "null"

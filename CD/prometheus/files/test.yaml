@@ -1,0 +1,132 @@
+prometheus:
+  prometheusSpec:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 800m
+        memory: 1Gi
+    retention: 24h   
+
+    additionalPrometheusRulesMap:
+
+      argocd.rules:
+        groups:
+          - name: argocd.rules
+            rules:
+              - alert: ArgoCDAppOutOfSync
+                expr: |
+                  argocd_app_info{sync_status="OutOfSync"} == 1
+                for: 2m
+                labels:
+                  severity: warning
+                  app: argocd
+                annotations:
+                  summary: "ArgoCD app {{ $labels.name }} is OutOfSync"
+                  description: |
+                    App {{ $labels.name }} is out of sync with repo {{ $labels.repo }}
+
+
+
+grafana:
+  service:
+    type: NodePort
+    nodePort: 32000
+
+  adminUser: admin
+  adminPassword: "admin"
+
+  persistence:
+    enabled: true
+    type: pvc
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+
+  dashboards:
+    default:
+      argocd-dashboard:
+        gnetId: 14584
+        revision: 1
+        datasource: Prometheus
+
+
+  # additionalDataSources:
+  #   - name: Prometheus
+  #     type: prometheus
+  #     access: proxy
+  #     url: http://my-kube-prometheus-stack-kube-p-prometheus.monitoring.svc:9090
+  #     isDefault: true
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    replicas: 1
+  config:
+    global:
+      resolve_timeout: 5m
+      smtp_smarthost: 'smtp.gmail.com:587'
+      smtp_from: 'sheblabdo00@gmail.com'
+      smtp_auth_username: 'sheblabdo00@gmail.com'
+      smtp_auth_password: '1234 1234 1234 1234'  
+      smtp_require_tls: true
+
+    route:
+      group_by: ['alertname']
+      group_wait: 10s
+      group_interval: 30s
+      repeat_interval: 1m
+      receiver: all-notifications
+
+      routes:
+        - matchers:
+            - alertname="Watchdog"
+          receiver: "null"
+        - matchers:
+            - alertname="TargetDown"
+          receiver: "null"
+        - matchers:
+            - alertname="KubeSchedulerDown"
+          receiver: "null"
+        - matchers:
+            - alertname="KubeControllerManagerDown"
+          receiver: "null"
+        - matchers:
+            - alertname=~"etcd.*"
+          receiver: "null"
+
+    receivers:
+      - name: all-notifications
+        email_configs:
+          - to: 'sheblabdo00@gmail.com'
+            send_resolved: true
+            headers:
+              subject: '[{{ .Status | toUpper }}] {{ range .Alerts }}{{ .Labels.alertname }} {{ end }}'
+            html: |
+              <h3>ArgoCD / App Alert</h3>
+              {{ range .Alerts }}
+                <p><b>App:</b> {{ .Labels.name }}</p>
+                <p><b>Sync Status:</b> {{ .Labels.sync_status }}</p>
+                <p><b>Repo URL:</b> <a href="{{ .Labels.repo }}">{{ .Labels.repo }}</a></p>
+                <p><b>Summary:</b> {{ .Annotations.summary }}</p>
+                <p><b>Started:</b> {{ .StartsAt }}</p>
+              {{ end }}
+
+        slack_configs:
+      - api_url: https://hooks.slack.com/services/test
+        channel: '#argocd-notifications'
+        send_resolved: true
+        text: |
+          🚨 [{{ .Status | toUpper }}] ({{ len .Alerts }}) alerts
+          {{ range .Alerts -}}
+            • {{ .Labels.alertname }} ({{ .Labels.severity }}) — {{ .Annotations.summary }}
+          {{ end }}
+      - name: "null"

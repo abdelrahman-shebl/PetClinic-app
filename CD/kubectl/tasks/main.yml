@@ -1,0 +1,27 @@
+# roles/kubectl/tasks/main.yml
+- name: Check if kubectl is already installed
+  ansible.builtin.command:
+    cmd: kubectl version --client
+  register: kubectl_check
+  failed_when: false
+  changed_when: false
+
+- name: Install kubectl if not present
+  when: kubectl_check.rc != 0
+  become: true
+  block:
+    - name: Download kubectl
+      ansible.builtin.shell:
+        cmd: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      args:
+        creates: kubectl
+
+    - name: Install kubectl
+      ansible.builtin.shell:
+        cmd: install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+      args:
+        creates: /usr/local/bin/kubectl
+
+- name: Display kubectl installation status
+  ansible.builtin.debug:
+    msg: "kubectl is {{ 'already installed' if kubectl_check.rc == 0 else 'newly installed' }}"

@@ -1,0 +1,11 @@
+- name: Deployment
+  hosts: all
+  gather_facts: no
+  roles:
+    - docker 
+    - kubectl
+    - minikube
+    - helm
+    - sealed-secrets
+    - prometheus
+    - argocd

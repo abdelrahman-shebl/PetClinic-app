@@ -1,0 +1,52 @@
+# roles/argocd/tasks/main.yml
+- name: Check if ArgoCD is already installed
+  ansible.builtin.shell: helm list -n argocd | grep argocd
+  register: argocd_check
+  failed_when: false
+  changed_when: false
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+- name: Install ArgoCD if not present
+  when: argocd_check.rc != 0
+  block:
+    - name: Add ArgoCD Helm repo
+      ansible.builtin.shell: helm repo add argo https://argoproj.github.io/argo-helm
+      environment:
+        KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+    - name: Update Helm repos
+      ansible.builtin.shell: helm repo update
+      environment:
+        KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+- name: Copy values.yaml
+  ansible.builtin.copy:
+    src: values.yaml 
+    dest: /tmp/values.yaml
+  become: true
+
+- name: Install/Upgrade ArgoCD
+  ansible.builtin.shell: helm upgrade --install argocd argo/argo-cd -n argocd -f /tmp/values.yaml --create-namespace
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+- name: Copy app.yaml
+  ansible.builtin.copy:
+    src: app.yml
+    dest: /tmp/app.yaml
+  become: true
+
+- name: Deploy ArgoCD apps
+  ansible.builtin.shell: helm upgrade --install argocd-apps argo/argocd-apps -n argocd -f /tmp/app.yaml
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+- name: Wait for ArgoCD server
+  ansible.builtin.shell: kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+- name: Display ArgoCD status
+  ansible.builtin.debug:
+    msg: "ArgoCD is {{ 'already installed' if argocd_check.rc == 0 else 'newly installed' }}"

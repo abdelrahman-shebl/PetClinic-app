@@ -1,0 +1,21 @@
+# roles/helm/tasks/main.yml
+- name: Check if Helm is installed
+  ansible.builtin.command:
+    cmd: helm version --short
+  register: helm_check
+  failed_when: false
+  changed_when: false
+
+- name: Install Helm if not present
+  when: helm_check.rc != 0
+  become: true
+  block:
+    - name: Install Helm using script
+      ansible.builtin.shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        executable: /bin/bash
+
+- name: Display Helm status
+  ansible.builtin.debug:
+    msg: "Helm is {{ 'already installed' if helm_check.rc == 0 else 'newly installed' }}"

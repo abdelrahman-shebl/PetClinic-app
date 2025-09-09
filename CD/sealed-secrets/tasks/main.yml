@@ -1,0 +1,43 @@
+---
+# roles/argocd/tasks/main.yml
+- name: Check if Sealed Secrets is already installed
+  ansible.builtin.shell: helm list -n kube-system | grep sealed-secrets
+  register: sealed_secrets_check
+  failed_when: false
+  changed_when: false
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config" 
+
+- name: Install Sealed Secrets if not present
+  when: sealed_secrets_check.rc != 0
+  block:
+    - name: Copy sealed-secrets-key.yaml
+      ansible.builtin.copy:
+        src: sealed-secrets-key.yaml  
+        dest: /tmp/sealed-secrets-key.yaml
+      become: true
+
+    - name: Apply sealed-secrets-key Secret
+      ansible.builtin.shell: kubectl apply -f /tmp/sealed-secrets-key.yaml
+      environment:
+        KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+    - name: Add Sealed Secrets Helm repo
+      ansible.builtin.shell: helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
+      environment:
+        KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+    - name: Update Helm repos
+      ansible.builtin.shell: helm repo update
+      environment:
+        KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+    - name: Install Sealed Secrets
+      ansible.builtin.shell: helm upgrade --install sealed-secrets sealed-secrets/sealed-secrets -n kube-system --create-namespace
+      environment:
+        KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+    - name: Wait for Sealed Secrets controller
+      ansible.builtin.shell: kubectl wait --for=condition=available --timeout=300s deployment/sealed-secrets -n kube-system
+      environment:
+        KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"

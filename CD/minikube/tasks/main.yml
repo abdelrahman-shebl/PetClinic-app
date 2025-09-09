@@ -1,0 +1,65 @@
+# roles/minikube/tasks/main.yml
+- name: Check if Minikube is installed
+  ansible.builtin.command:
+    cmd: minikube version
+  register: minikube_check
+  failed_when: false
+  changed_when: false
+
+- name: Install Minikube if not present
+  when: minikube_check.rc != 0
+  become: true
+  block:
+    - name: Download and install Minikube
+      ansible.builtin.shell: |
+        curl -LO https://github.com/kubernetes/minikube/releases/latest/download/minikube-linux-amd64
+        install minikube-linux-amd64 /usr/local/bin/minikube
+        rm minikube-linux-amd64
+      args:
+        creates: /usr/local/bin/minikube
+
+- name: Check if minikube is running
+  ansible.builtin.shell:
+    cmd: minikube status
+  register: minikube_status
+  become_user: "{{ansible_user}}"
+  become: false
+  failed_when: false
+  changed_when: false
+
+- name: Start Minikube if not running
+  ansible.builtin.shell: |
+    minikube start --driver=docker --memory=3600 --cpus=2 --wait=all --force
+  become_user: "{{ ansible_user}}"
+  become: false
+  environment:
+    HOME: "/home/{{ ansible_user}}"
+  when: "'host: Running' not in minikube_status.stdout"
+
+- name: Wait for Kubernetes API to be ready
+  ansible.builtin.shell: kubectl get nodes
+  register: kube_ready
+  retries: 10
+  delay: 15
+  until: kube_ready.rc == 0
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+- name: Ensure kubeconfig exists
+  ansible.builtin.file:
+    path: /home/{{ ansible_user }}/.kube/config
+    state: file
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+
+- name: Export KUBECONFIG in bashrc for future sessions
+  ansible.builtin.lineinfile:
+    path: /home/{{ ansible_user }}/.bashrc
+    line: 'export KUBECONFIG=/home/{{ ansible_user }}/.kube/config'
+    create: yes
+
+- name: Display Minikube status
+  ansible.builtin.debug:
+    msg: >-
+      Minikube is {{ 'already installed' if minikube_check.rc == 0 else 'newly installed' }} and cluster started

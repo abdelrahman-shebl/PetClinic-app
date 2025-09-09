@@ -1,0 +1,84 @@
+---
+# roles/prometheus/tasks/main.yml
+
+- name: Ensure monitoring namespace exists
+  ansible.builtin.shell: >
+    kubectl create namespace monitoring
+    --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+- name: Wait for SealedSecrets CRD to exist
+  ansible.builtin.shell: >
+    kubectl get crd sealedsecrets.bitnami.com
+  register: sealed_crd_check
+  retries: 30
+  delay: 10
+  until: sealed_crd_check.rc == 0
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+- name: Copy Gmail SMTP Sealed Secret manifest
+  ansible.builtin.copy:
+    src: gmail-smtp-sealed.yaml
+    dest: /tmp/gmail-smtp-sealed.yaml
+  become: true
+
+- name: Apply Gmail SMTP Sealed Secret
+  ansible.builtin.shell: kubectl apply -f /tmp/gmail-smtp-sealed.yaml
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+- name: Copy Slack API Sealed Secret manifest
+  ansible.builtin.copy:
+    src: slack-api-sealed.yaml
+    dest: /tmp/slack-api-sealed.yaml
+  become: true
+
+- name: Apply Slack API Sealed Secret
+  ansible.builtin.shell: kubectl apply -f /tmp/slack-api-sealed.yaml
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+- name: Add prometheus Helm repo
+  ansible.builtin.shell: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+- name: Update Helm repos
+  ansible.builtin.shell: helm repo update
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+- name: Copy prom-values.yaml
+  ansible.builtin.copy:
+    src: prom-values.yaml
+    dest: /tmp/prom-values.yaml
+  become: true
+
+- name: Install/Upgrade prometheus-stack
+  ansible.builtin.shell: >
+    helm upgrade --install my-kube-prometheus-stack
+    prometheus-community/kube-prometheus-stack
+    -n monitoring
+    -f /tmp/prom-values.yaml
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"
+
+
+- name: Download ArgoCD Grafana dashboard (14584)
+  ansible.builtin.get_url:
+    url: "https://grafana.com/api/dashboards/14584/revisions/1/download"
+    dest: "/tmp/argocd-dashboard.json"
+    mode: '0644'
+
+- name: Create ConfigMap for ArgoCD dashboard
+  ansible.builtin.shell: |
+    kubectl create configmap argocd-dashboard \
+      -n monitoring \
+      --from-file=argocd-dashboard.json=/tmp/argocd-dashboard.json \
+      --dry-run=client -o yaml | \
+    kubectl apply -f -
+    kubectl label configmap argocd-dashboard -n monitoring grafana_dashboard=1 --overwrite
+  environment:
+    KUBECONFIG: "/home/{{ ansible_user }}/.kube/config"

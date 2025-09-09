@@ -1,0 +1,14 @@
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: gmail-smtp-secret
+  namespace: monitoring
+spec:
+  encryptedData:
+    smtp_auth_password: AgB2v6fWKTwZ4gHcPbiLLuH5wf0mcAo+VY8kLnRbaEfTzKAZxF60uDbGacXjksXBmcAo8tZ3ply1+bs5pA86UKqxup7ef2ygQDu3Hvw8Dm/g/LfI0l5K95bsUOg5HWmcoiTcMcxjZaoKGCPYcpNRuCcoen9WVh062DKXRsTIb62QgHyKwVGruNZAjmAE1bq0rg3qsCVRctieFahimDINUkkFD/m1xYvOQh8YIokw6fUhy3fWvjCENLi/nj1N1o/xfz0YSxyv7mdsjI8lST+cz2HKrtTY4Vj7qLI6gDaOIK2Pvfc+vhHfMoDZeS4kVDIZYq9c01UocXKTqiEa1/tCJQDN7hk7YS2bH5kMLzIjAzeG+iA9glZ8YBdSocpeqJVayjS85ZsLdivFff5fOLQ2TNFJoDL0PiPljF73mt/OZFRHnQW/GKyDE8h2SkHyqolfF4DjV8fAJlIMX2RjYcguFBeygBuVllPCNRiM7PDeZFsz7fJit5xW2P9RNLmeKih6eb5WERAYMg0Ua3jvbJG/2S7JYnoJE7KT99u6SYbL0uN1+s8ag1dFuyQu70/lRj8ANTj5lsKQvI4jLr5usFEIumCLPVdKLNqZvotB/JYfwwFTHoB6H/DwSjsCpYjrFooThwiCamosdI1g0SuSTKyc/RyPU6cyci9e9BSTVrikO6zpRmBeCh3oVydr3QMt7wcPYHD1lRy4vdQnLz/Ppiq7zzfoTXa9
+  template:
+    metadata:
+      creationTimestamp: null
+      name: gmail-smtp-secret
+      namespace: monitoring

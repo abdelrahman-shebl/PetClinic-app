@@ -1,0 +1,12 @@
+---
+# vars file for docker
+first_packages:
+  - ca-certificates
+  - curl
+  
+second_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
