@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: db-deploy
 spec:
+  replicas: 3
   selector:
     matchLabels:
       tier: db 
