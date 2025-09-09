@@ -89,7 +89,7 @@ jobs:
     
     Docker-push:
 
-        needs:  Unit-testing
+        needs:  Trivy-scan
 
         runs-on: ubuntu-latest   
         steps:
