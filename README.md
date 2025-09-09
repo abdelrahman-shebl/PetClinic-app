@@ -111,7 +111,6 @@ This project demonstrates enterprise-grade DevOps automation with:
 
 - **[CI Pipeline Details](./CI/README.MD)**: Complete CI pipeline guide
 - **[CD Infrastructure Setup](./CD/README.md)**: Ansible automation documentation
-- **[Kubernetes Manifests](./K8s/)**: All K8s resource definitions
 
 ## 🎯 Key Benefits
 
