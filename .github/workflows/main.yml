@@ -5,13 +5,12 @@ on:
       branches: 
         - 'main'
         - 'feature/*'
-permissions:
-  contents: read
-  checks: write
-      
       
 jobs: 
     Unit-testing:
+        permissions: 
+          contents: read
+          checks: write
         defaults:
           run:
             working-directory: pet-clinic
@@ -38,6 +37,7 @@ jobs:
             path: |
               pet-clinic/target/surefire-reports/*.xml
               pet-clinic/target/failsafe-reports/*.xml
+
         - name: Publish test results
           uses: mikepenz/action-junit-report@v4
           if: always() 
@@ -45,6 +45,7 @@ jobs:
             report_paths: |
               pet-clinic/target/surefire-reports/*.xml
               pet-clinic/target/failsafe-reports/*.xml
+            check_name: "Unit Tests"
     build-scan-push:
       runs-on: ubuntu-latest
       needs: Unit-testing
@@ -87,6 +88,8 @@ jobs:
     Deploy:
     
         runs-on: ubuntu-latest
+        permissions: 
+          contents: write
         needs: build-scan-push
         steps:
             - name: checkout code
