@@ -13,7 +13,7 @@ jobs:
           checks: write
         defaults:
           run:
-            working-directory: pet-clinic
+            working-directory: CI/pet-clinic
         runs-on: ubuntu-latest   
 
         steps:
@@ -35,8 +35,8 @@ jobs:
           with:
             name: JUnit Tests
             path: |
-              pet-clinic/target/surefire-reports/*.xml
-              pet-clinic/target/failsafe-reports/*.xml
+              CI/pet-clinic/target/surefire-reports/*.xml
+              CI/pet-clinic/target/failsafe-reports/*.xml
 
         - name: Publish test results
           uses: mikepenz/action-junit-report@v4
@@ -44,8 +44,8 @@ jobs:
           continue-on-error: true
           with:
             report_paths: |
-              pet-clinic/target/surefire-reports/*.xml
-              pet-clinic/target/failsafe-reports/*.xml
+              CI/pet-clinic/target/surefire-reports/*.xml
+              CI/pet-clinic/target/failsafe-reports/*.xml
             check_name: |
               Surefire
               Failsafe
@@ -65,8 +65,7 @@ jobs:
         - name: Build Docker image
           uses: docker/build-push-action@v6
           with:
-            context: ./pet-clinic
-            file: ./pet-clinic/Dockerfile
+            context: CI/pet-clinic
             push: false
             tags: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{ github.sha }}
 
@@ -83,8 +82,7 @@ jobs:
         - name: Push Docker image
           uses: docker/build-push-action@v6
           with:
-            context: ./pet-clinic
-            file: ./pet-clinic/Dockerfile
+            context: CI/pet-clinic
             push: true
             tags: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{ github.sha }}
 
@@ -104,7 +102,7 @@ jobs:
               with:
                 tokenPrefix: '{'
                 tokenSuffix: '}'
-                files: '["K8s/Deployments/app-deployment.yml"]'
+                files: '["CI/K8s/Deployments/app-deployment.yml"]'
               env:
                 IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{github.sha}} 
 
@@ -115,3 +113,51 @@ jobs:
                 commit_message: "Update image to ${{ github.sha }}"
               env:
                 GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+
+    Slack-Gmail-Notifications:
+      needs: Deploy
+      runs-on: ubuntu-latest
+      steps:
+        - name: Send Slack Notification
+          if: always() 
+          uses: 8398a7/action-slack@v3
+          with:
+            status: ${{ job.status }}
+            author_name: ${{ github.actor }}
+            fields: workflow,job,commit,repo,ref
+            custom_payload: |
+              {
+                "attachments": [
+                  {
+                    "color": "${{ job.status == 'success' && 'good' || job.status == 'failure' && 'danger' || job.status == 'cancelled' && 'warning' }}",
+                    "title": "Workflow ${{ github.workflow }}",
+                    "text": "Job: ${{ github.job }}\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}\nAuthor: ${{ github.actor }}\nStatus: ${{ job.status }}",
+                    "footer": "GitHub Actions",
+                    "ts": $(date +%s)
+                  }
+                ]
+              }
+          env:
+            SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+
+        - name: Send Gmail Notification
+          uses: appleboy/send-mail@v0
+          with:
+            server: smtp.gmail.com
+            port: 465
+            secure: true
+            username: ${{ secrets.GMAIL_USERNAME }}
+            password: ${{ secrets.GMAIL_APP_PASSWORD }}
+            subject: "GitHub Actions Workflow ${{ github.workflow }} Status: ${{ job.status }}"
+            to: ${{ secrets.GMAIL_USERNAME }}
+            from: ${{ secrets.GMAIL_USERNAME }}
+            body: |
+              Workflow: ${{ github.workflow }}
+              Status: ${{ job.status }}
+              Branch: ${{ github.ref }}
+              Commit: ${{ github.sha }}
+              Author: ${{ github.actor }}
+              Jobs Summary:
+                - Build: ${{ needs.build.result }}
+                - Test: ${{ needs.test.result }}
