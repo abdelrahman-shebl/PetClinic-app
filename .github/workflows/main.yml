@@ -118,6 +118,7 @@ jobs:
       # needs: Deploy
       runs-on: ubuntu-latest
       steps:
+        - uses: actions/checkout@v3 
         - name: Send Slack Notification
           if: always() 
           uses: 8398a7/action-slack@v3
@@ -147,5 +148,5 @@ jobs:
             sender_email: ${{ secrets.GMAIL_USERNAME }}
             app_password: ${{ secrets.GMAIL_APP_PASSWORD }}
             receiver_emails: "recipient1@example.com,recipient2@example.com"
-            template_path: ${{ github.workspace }}/.github/email-template.html"
+            template_path: ".github/email-template.html"
             subject: "Workflow ${{ github.workflow }} Status: ${{ job.status }}"
