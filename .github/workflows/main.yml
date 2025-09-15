@@ -142,22 +142,10 @@ jobs:
 
 
         - name: Send Gmail Notification
-          uses: appleboy/send-mail@v0
+          uses: Raghul-M/gmail-sender-action@v1
           with:
-            server: smtp.gmail.com
-            port: 465
-            secure: true
-            username: ${{ secrets.GMAIL_USERNAME }}
-            password: ${{ secrets.GMAIL_APP_PASSWORD }}
-            subject: "GitHub Actions Workflow ${{ github.workflow }} Status: ${{ job.status }}"
-            to: ${{ secrets.GMAIL_USERNAME }}
-            from: ${{ secrets.GMAIL_USERNAME }}
-            body: |
-              Workflow: ${{ github.workflow }}
-              Status: ${{ job.status }}
-              Branch: ${{ github.ref }}
-              Commit: ${{ github.sha }}
-              Author: ${{ github.actor }}
-              Jobs Summary:
-                - Build: ${{ needs.build.result }}
-                - Test: ${{ needs.test.result }}
+            sender_email: ${{ secrets.GMAIL_USERNAME }}
+            app_password: ${{ secrets.GMAIL_APP_PASSWORD }}
+            receiver_emails: "recipient1@example.com,recipient2@example.com"
+            template_path: ".github/email-template.html"
+            subject: "Workflow ${{ github.workflow }} Status: ${{ job.status }}"
