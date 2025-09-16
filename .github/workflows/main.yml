@@ -122,29 +122,38 @@ jobs:
 
       - name: Render email template
         run: |
-          STATUS="${{ github.run_status }}"
+          # Derive STATUS from needs results or default to unknown
+          if [ -n "${{ toJSON(needs) }}" ] && [ "${{ toJSON(needs) }}" != "{}" ]; then
+            STATUS=$(echo '${{ toJSON(needs) }}' | jq -r '[.[] | select(.result != "skipped") | .result] | if all(. == "success") then "success" elif any(. == "failure") then "failure" else "cancelled" end')
+          else
+            STATUS="unknown"
+          fi
           COLOR=$([[ "$STATUS" == "success" ]] && echo "green" || [[ "$STATUS" == "failure" ]] && echo "red" || echo "orange")
           EMOJI=$([[ "$STATUS" == "success" ]] && echo "✅" || [[ "$STATUS" == "failure" ]] && echo "❌" || echo "⚠️")
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
-          JOBS_SUMMARY=$(echo '${{ toJSON(needs) }}' | jq -r 'to_entries | map("\(.key): \(.value.result)") | join("\n")')
-          sed -i "s/{{ status }}/$STATUS/g" .github/email_template.html
-          sed -i "s/{{ emoji }}/$EMOJI/g" .github/email_template.html
-          sed -i "s/{{ color }}/$COLOR/g" .github/email_template.html
-          sed -i "s/{{ workflow }}/${{ github.workflow }}/g" .github/email_template.html
-          sed -i "s/{{ branch }}/${{ github.ref }}/g" .github/email_template.html
-          sed -i "s/{{ commit }}/${{ github.sha }}/g" .github/email_template.html
-          sed -i "s/{{ commit_url }}/$COMMIT_URL/g" .github/email_template.html
-          sed -i "s/{{ author }}/${{ github.actor }}/g" .github/email_template.html
-          sed -i "s/{{ run_url }}/$RUN_URL/g" .github/email_template.html
-          sed -i "s|{{ jobs_summary }}|$JOBS_SUMMARY|g" .github/email_template.html
+          JOBS_SUMMARY=$(echo '${{ toJSON(needs) }}' | jq -r 'if . == {} then "No previous jobs" else (to_entries | map("\(.key): \(.value.result)") | join("\n")) end')
+          # Escape JOBS_SUMMARY for sed (handle newlines and special chars)
+          ESCAPED_JOBS_SUMMARY=$(echo "$JOBS_SUMMARY" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/[&/\]/\\&/g')
+          sed -i "s|{{ status }}|$STATUS|g" .github/email_template.html
+          sed -i "s|{{ emoji }}|$EMOJI|g" .github/email_template.html
+          sed -i "s|{{ color }}|$COLOR|g" .github/email_template.html
+          sed -i "s|{{ workflow }}|${{ github.workflow }}|g" .github/email_template.html
+          sed -i "s|{{ branch }}|${{ github.ref }}|g" .github/email_template.html
+          sed -i "s|{{ commit }}|${{ github.sha }}|g" .github/email_template.html
+          sed -i "s|{{ commit_url }}|$COMMIT_URL|g" .github/email_template.html
+          sed -i "s|{{ author }}|${{ github.actor }}|g" .github/email_template.html
+          sed -i "s|{{ run_url }}|$RUN_URL|g" .github/email_template.html
+          sed -i "s|{{ jobs_summary }}|$ESCAPED_JOBS_SUMMARY|g" .github/email_template.html
+        continue-on-error: true  # Prevent step failure from stopping notifications
 
       - name: Send Slack Notification
         uses: slackapi/slack-github-action@v1.26.0
+        if: always()
         with:
           payload: |
             {
-              "icon_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+              "icon_url": "https://slack.com/favicon.ico",  # Slack icon
               "blocks": [
                 {
                   "type": "header",
@@ -164,7 +173,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*Jobs Summary:*\n${{ toJSON(needs) }}"
+                    "text": "*Jobs Summary:*\n${{ toJSON(needs) == '{}' && 'No previous jobs' || toJSON(needs) }}"
                   }
                 },
                 {
@@ -187,6 +196,7 @@ jobs:
 
       - name: Send Email Notification
         uses: dawidd6/action-send-mail@v3
+        if: always()
         with:
           server_address: smtp.gmail.com
           server_port: 465
