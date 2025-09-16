@@ -115,7 +115,6 @@ jobs:
     #             GITHUB_TOKEN: ${{ secrets.GH_PAT }}
 
   Slack-Gmail-Notifications:
-    name: Slack-Gmail-Notifications
     runs-on: ubuntu-latest
     if: always()  # Run regardless of workflow status
     steps:
@@ -224,5 +223,4 @@ jobs:
           subject: "GitHub Actions Workflow: ${{ github.workflow }} - ${{ steps.prepare.outputs.status }}"
           to: ${{ secrets.GMAIL_USERNAME }}
           from: "GitHub Actions <${{ secrets.GMAIL_USERNAME }}>"
-          body_file: .github/email_template.html
-          content_type: text/html
+          html_body: "$(cat .github/email_template.html)"
