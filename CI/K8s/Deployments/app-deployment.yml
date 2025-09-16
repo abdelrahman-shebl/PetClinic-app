@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: pet-clinic
-          image: {IMAGE}
+          image: shebl22/petclinic:8cd8bb2970b3a81523a5b64d92cb25b0430617fa
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
