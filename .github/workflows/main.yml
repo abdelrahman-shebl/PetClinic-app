@@ -114,39 +114,87 @@ jobs:
     #           env:
     #             GITHUB_TOKEN: ${{ secrets.GH_PAT }}
 
-    Slack-Gmail-Notifications:
-      # needs: Deploy
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v3 
-        - name: Send Slack Notification
-          if: always() 
-          uses: 8398a7/action-slack@v3
-          with:
-            status: ${{ job.status }}
-            author_name: ${{ github.actor }}
-            fields: workflow,job,commit,repo,ref
-            custom_payload: |
-              {
-                "attachments": [
-                  {
-                    "color": "${{ job.status == 'success' && 'good' || job.status == 'failure' && 'danger' || job.status == 'cancelled' && 'warning' }}",
-                    "title": "Workflow ${{ github.workflow }}",
-                    "text": "Job: ${{ github.job }}\nBranch: ${{ github.ref }}\nCommit: ${{ github.sha }}\nAuthor: ${{ github.actor }}\nStatus: ${{ job.status }}",
-                    "footer": "GitHub Actions",
-                    "ts": $(date +%s)
+  Slack-Gmail-Notifications:
+    runs-on: ubuntu-latest
+    if: always()  # Run regardless of workflow status
+    steps:
+      - uses: actions/checkout@v4  # Needed to access email_template.html
+
+      - name: Render email template
+        run: |
+          STATUS="${{ github.run_status }}"
+          COLOR=$([[ "$STATUS" == "success" ]] && echo "green" || [[ "$STATUS" == "failure" ]] && echo "red" || echo "orange")
+          EMOJI=$([[ "$STATUS" == "success" ]] && echo "✅" || [[ "$STATUS" == "failure" ]] && echo "❌" || echo "⚠️")
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          JOBS_SUMMARY=$(echo '${{ toJSON(needs) }}' | jq -r 'to_entries | map("\(.key): \(.value.result)") | join("\n")')
+          sed -i "s/{{ status }}/$STATUS/g" .github/email_template.html
+          sed -i "s/{{ emoji }}/$EMOJI/g" .github/email_template.html
+          sed -i "s/{{ color }}/$COLOR/g" .github/email_template.html
+          sed -i "s/{{ workflow }}/${{ github.workflow }}/g" .github/email_template.html
+          sed -i "s/{{ branch }}/${{ github.ref }}/g" .github/email_template.html
+          sed -i "s/{{ commit }}/${{ github.sha }}/g" .github/email_template.html
+          sed -i "s/{{ commit_url }}/$COMMIT_URL/g" .github/email_template.html
+          sed -i "s/{{ author }}/${{ github.actor }}/g" .github/email_template.html
+          sed -i "s/{{ run_url }}/$RUN_URL/g" .github/email_template.html
+          sed -i "s|{{ jobs_summary }}|$JOBS_SUMMARY|g" .github/email_template.html
+
+      - name: Send Slack Notification
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "icon_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ github.workflow }} ${{ github.run_status == 'success' && '✅' || github.run_status == 'failure' && '❌' || '⚠️' }}"
                   }
-                ]
-              }
-          env:
-            SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Status:* ${{ github.run_status }}\n*Branch:* ${{ github.ref }}\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Jobs Summary:*\n${{ toJSON(needs) }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*View details:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Workflow Run>"
+                  },
+                  "accessory": {
+                    "type": "image",
+                    "image_url": "${{ github.run_status == 'success' && 'https://img.icons8.com/color/48/000000/ok--v1.png' || github.run_status == 'failure' && 'https://img.icons8.com/color/48/000000/cancel--v1.png' || 'https://img.icons8.com/color/48/000000/warning-shield.png' }}",
+                    "alt_text": "Status icon"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
-
-        - name: Send Gmail Notification
-          uses: Raghul-M/gmail-sender-action@v1
-          with:
-            sender_email: ${{ secrets.GMAIL_USERNAME }}
-            app_password: ${{ secrets.GMAIL_APP_PASSWORD }}
-            receiver_emails: "recipient1@example.com,recipient2@example.com"
-            template_path: ".github/email-template.html"
-            subject: "Workflow ${{ github.workflow }} Status: ${{ job.status }}"
+      - name: Send Email Notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "GitHub Actions Workflow: ${{ github.workflow }} - ${{ github.run_status }}"
+          to: ${{ secrets.GMAIL_USERNAME }}
+          from: "GitHub Actions <${{ secrets.GMAIL_USERNAME }}>"
+          body_file: .github/email_template.html
+          content_type: text/html
