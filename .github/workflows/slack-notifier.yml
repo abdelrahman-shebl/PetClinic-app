@@ -1,0 +1,38 @@
+
+name: Slack Notification
+
+on:
+  workflow_run:
+    workflows: ["Petclinic pipelines"] 
+    types:
+      - completed
+
+jobs:
+  send-slack-notification:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Individual Job Statuses
+        id: jobs_summary
+        run: |
+          # 1. Ask the GitHub API for the list of jobs
+          JOBS_URL="${{ github.event.workflow_run.jobs_url }}"
+          
+          # 2. Fetch the data and format it into a clean summary with emojis
+          SUMMARY=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" $JOBS_URL | \
+          jq -r '.jobs | map(if .conclusion == "success" then "✅ \(.name): \(.conclusion)" elif .conclusion == "failure" then "❌ \(.name): \(.conclusion)" else "⚠️ \(.name): \(.conclusion)" end) | join("\n")')
+          
+          # 3. Save the summary so the next step can use it
+          {
+            echo "summary<<EOF"
+            echo "$SUMMARY"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Send Workflow Status to Slack
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_COLOR: ${{ github.event.workflow_run.conclusion }}
+          SLACK_TITLE: "Workflow Status - ${{ github.event.workflow_run.conclusion }}"
+          SLACK_MESSAGE: "*Job Statuses:*\n${{ steps.jobs_summary.outputs.summary }}" 
+          SLACK_FOOTER: "See the full run here: ${{ github.event.workflow_run.html_url }}"

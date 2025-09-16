@@ -7,220 +7,109 @@ on:
         - 'feature/*' 
       
 jobs: 
-    # Unit-testing:
-    #     permissions: 
-    #       contents: read
-    #       checks: write
-    #     defaults:
-    #       run:
-    #         working-directory: CI/pet-clinic
-    #     runs-on: ubuntu-latest   
+    Unit-testing:
+        permissions: 
+          contents: read
+          checks: write
+        defaults:
+          run:
+            working-directory: CI/pet-clinic
+        runs-on: ubuntu-latest   
 
-    #     steps:
-    #     - name: checkout code
-    #       uses: actions/checkout@v5
+        steps:
+        - name: checkout code
+          uses: actions/checkout@v5
 
-    #     - name: Installing Java
-    #       uses: actions/setup-java@v5
-    #       with:
-    #         distribution: 'temurin' 
-    #         java-version: '21'
-    #         cache: maven  
+        - name: Installing Java
+          uses: actions/setup-java@v5
+          with:
+            distribution: 'temurin' 
+            java-version: '21'
+            cache: maven  
 
-    #     - name: Run tests 
-    #       run: mvn test -Dtest=!PostgresIntegrationTests
+        - name: Run tests 
+          run: mvn test -Dtest=!PostgresIntegrationTests
 
-    #     - name: Uploading test results
-    #       uses: actions/upload-artifact@v4
-    #       with:
-    #         name: JUnit Tests
-    #         path: |
-    #           CI/pet-clinic/target/surefire-reports/*.xml
-    #           CI/pet-clinic/target/failsafe-reports/*.xml
+        - name: Uploading test results
+          uses: actions/upload-artifact@v4
+          with:
+            name: JUnit Tests
+            path: |
+              CI/pet-clinic/target/surefire-reports/*.xml
+              CI/pet-clinic/target/failsafe-reports/*.xml
 
-    #     - name: Publish test results
-    #       uses: mikepenz/action-junit-report@v4
-    #       if: always()
-    #       continue-on-error: true
-    #       with:
-    #         report_paths: |
-    #           CI/pet-clinic/target/surefire-reports/*.xml
-    #           CI/pet-clinic/target/failsafe-reports/*.xml
-    #         check_name: |
-    #           Surefire
-    #           Failsafe
+        - name: Publish test results
+          uses: mikepenz/action-junit-report@v4
+          if: always()
+          continue-on-error: true
+          with:
+            report_paths: |
+              CI/pet-clinic/target/surefire-reports/*.xml
+              CI/pet-clinic/target/failsafe-reports/*.xml
+            check_name: |
+              Surefire
+              Failsafe
               
-    # build-scan-push:
-    #   runs-on: ubuntu-latest
-    #   needs: Unit-testing
-    #   steps:
-    #     - uses: actions/checkout@v5
+    build-scan-push:
+      runs-on: ubuntu-latest
+      needs: Unit-testing
+      steps:
+        - uses: actions/checkout@v5
 
-    #     - name: Login Docker
-    #       uses: docker/login-action@v3
-    #       with:
-    #         username: ${{ vars.DOCKERHUB_USERNAME }}
-    #         password: ${{ secrets.DOCKERHUB_TOKEN }}
+        - name: Login Docker
+          uses: docker/login-action@v3
+          with:
+            username: ${{ vars.DOCKERHUB_USERNAME }}
+            password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    #     - name: Build Docker image
-    #       uses: docker/build-push-action@v6
-    #       with:
-    #         context: CI/pet-clinic
-    #         push: false
-    #         tags: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{ github.sha }}
+        - name: Build Docker image
+          uses: docker/build-push-action@v6
+          with:
+            context: CI/pet-clinic
+            push: false
+            tags: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{ github.sha }}
 
-    #     - name: Scan Docker image with Trivy
-    #       uses: aquasecurity/trivy-action@0.28.0
-    #       with:
-    #         image-ref: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{ github.sha }}
-    #         format: table
-    #         ignore-unfixed: true
-    #         vuln-type: os,library
-    #         severity: CRITICAL,HIGH
-    #       continue-on-error: true
+        - name: Scan Docker image with Trivy
+          uses: aquasecurity/trivy-action@0.28.0
+          with:
+            image-ref: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{ github.sha }}
+            format: table
+            ignore-unfixed: true
+            vuln-type: os,library
+            severity: CRITICAL,HIGH
+          continue-on-error: true
 
-    #     - name: Push Docker image
-    #       uses: docker/build-push-action@v6
-    #       with:
-    #         context: CI/pet-clinic
-    #         push: true
-    #         tags: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{ github.sha }}
+        - name: Push Docker image
+          uses: docker/build-push-action@v6
+          with:
+            context: CI/pet-clinic
+            push: true
+            tags: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{ github.sha }}
 
 
-    # Deploy:
+    Deploy:
     
-    #     runs-on: ubuntu-latest
-    #     permissions: 
-    #       contents: write
-    #     needs: build-scan-push
-    #     steps:
-    #         - name: checkout code
-    #           uses: actions/checkout@v5
+        runs-on: ubuntu-latest
+        permissions: 
+          contents: write
+        needs: build-scan-push
+        steps:
+            - name: checkout code
+              uses: actions/checkout@v5
 
-    #         - name: Update K8s Manifests
-    #           uses: cschleiden/replace-tokens@v1
-    #           with:
-    #             tokenPrefix: '{'
-    #             tokenSuffix: '}'
-    #             files: '["CI/K8s/Deployments/app-deployment.yml"]'
-    #           env:
-    #             IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{github.sha}} 
+            - name: Update K8s Manifests
+              uses: cschleiden/replace-tokens@v1
+              with:
+                tokenPrefix: '{'
+                tokenSuffix: '}'
+                files: '["CI/K8s/Deployments/app-deployment.yml"]'
+              env:
+                IMAGE: ${{ vars.DOCKERHUB_USERNAME }}/petclinic:${{github.sha}} 
 
-    #         - name: push to the remote repository
-    #           uses: stefanzweifel/git-auto-commit-action@v6
-    #           with:  
+            - name: push to the remote repository
+              uses: stefanzweifel/git-auto-commit-action@v6
+              with:  
  
-    #             commit_message: "Update image to ${{ github.sha }}" 
-    #           env:
-    #             GITHUB_TOKEN: ${{ secrets.GH_PAT }}
-
-  Slack-Gmail-Notifications: 
-    runs-on: ubuntu-latest
-    if: always()  # Run regardless of workflow status
-    steps:
-      - uses: actions/checkout@v4  # Needed to access email_template.html
-
-      - name: Prepare notification payload
-        id: prepare
-        run: |
-          # Derive STATUS from needs results or default to unknown
-          if [ -n "${{ toJSON(needs) }}" ] && [ "${{ toJSON(needs) }}" != "{}" ]; then
-            STATUS=$(echo '${{ toJSON(needs) }}' | jq -r '[.[] | select(.result != "skipped") | .result] | if all(. == "success") then "success" elif any(. == "failure") then "failure" else "cancelled" end')
-          else
-            STATUS="unknown"
-          fi
-          EMOJI=$([[ "$STATUS" == "success" ]] && echo "✅" || [[ "$STATUS" == "failure" ]] && echo "❌" || echo "⚠️")
-          COLOR=$([[ "$STATUS" == "success" ]] && echo "green" || [[ "$STATUS" == "failure" ]] && echo "red" || echo "orange")
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
-          JOBS_SUMMARY=$(echo '${{ toJSON(needs) }}' | jq -r 'if . == {} then "No previous jobs" else (to_entries | map("\(.key): \(.value.result)") | join("\n")) end')
-          # Escape JOBS_SUMMARY for sed
-          ESCAPED_JOBS_SUMMARY=$(echo "$JOBS_SUMMARY" | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/[&/\]/\\&/g')
-          # Create Slack JSON payload
-          cat << EOF > slack_payload.json
-          {
-            "icon_url": "https://slack.com/favicon.ico",
-            "blocks": [
-              {
-                "type": "header",
-                "text": {
-                  "type": "plain_text",
-                  "text": "${{ github.workflow }} $EMOJI"
-                }
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "*Status:* $STATUS\n*Branch:* ${{ github.ref }}\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\n*Author:* ${{ github.actor }}"
-                }
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "*Jobs Summary:*\n$JOBS_SUMMARY"
-                }
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "*View details:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Workflow Run>"
-                },
-                "accessory": {
-                  "type": "image",
-                  "image_url": "$([[ "$STATUS" == "success" ]] && echo "https://img.icons8.com/color/48/000000/ok--v1.png" || [[ "$STATUS" == "failure" ]] && echo "https://img.icons8.com/color/48/000000/cancel--v1.png" || echo "https://img.icons8.com/color/48/000000/warning-shield.png")",
-                  "alt_text": "Status icon"
-                }
-              }
-            ]
-          }
-          EOF
-          # Validate JSON
-          jq . slack_payload.json || exit 1
-          # Output for email rendering
-          echo "status=$STATUS" >> $GITHUB_OUTPUT
-          echo "emoji=$EMOJI" >> $GITHUB_OUTPUT
-          echo "color=$COLOR" >> $GITHUB_OUTPUT
-          echo "run_url=$RUN_URL" >> $GITHUB_OUTPUT
-          echo "commit_url=$COMMIT_URL" >> $GITHUB_OUTPUT
-          echo "jobs_summary=$ESCAPED_JOBS_SUMMARY" >> $GITHUB_OUTPUT
-        continue-on-error: true
-
-      - name: Render email template
-        run: |
-          sed -i "s|{{ status }}|${{ steps.prepare.outputs.status }}|g" .github/email_template.html
-          sed -i "s|{{ emoji }}|${{ steps.prepare.outputs.emoji }}|g" .github/email_template.html
-          sed -i "s|{{ color }}|${{ steps.prepare.outputs.color }}|g" .github/email_template.html
-          sed -i "s|{{ workflow }}|${{ github.workflow }}|g" .github/email_template.html
-          sed -i "s|{{ branch }}|${{ github.ref }}|g" .github/email_template.html
-          sed -i "s|{{ commit }}|${{ github.sha }}|g" .github/email_template.html
-          sed -i "s|{{ commit_url }}|${{ steps.prepare.outputs.commit_url }}|g" .github/email_template.html
-          sed -i "s|{{ author }}|${{ github.actor }}|g" .github/email_template.html
-          sed -i "s|{{ run_url }}|${{ steps.prepare.outputs.run_url }}|g" .github/email_template.html
-          sed -i "s|{{ jobs_summary }}|${{ steps.prepare.outputs.jobs_summary }}|g" .github/email_template.html
-        continue-on-error: true
-
-      - name: Send Slack Notification
-        uses: slackapi/slack-github-action@v1.26.0
-        if: always()
-        with:
-          payload-file-path: slack_payload.json
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
-      - name: Send Email Notification
-        uses: dawidd6/action-send-mail@v3
-        if: always()
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.GMAIL_USERNAME }}
-          password: ${{ secrets.GMAIL_APP_PASSWORD }}
-          subject: "GitHub Actions Workflow: ${{ github.workflow }} - ${{ steps.prepare.outputs.status }}"
-          to: ${{ secrets.GMAIL_USERNAME }}
-          from: "GitHub Actions <${{ secrets.GMAIL_USERNAME }}>"
-          html_body: "$(cat .github/email_template.html)"
+                commit_message: "Update image to ${{ github.sha }}" 
+              env:
+                GITHUB_TOKEN: ${{ secrets.GH_PAT }}
